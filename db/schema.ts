@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, primaryKey, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const characters = sqliteTable("characters", {
   id: text("id").primaryKey(),
@@ -26,3 +26,12 @@ export const characters = sqliteTable("characters", {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+export const dailyChatUsage = sqliteTable("daily_chat_usage", {
+  identityHash: text("identity_hash").notNull(),
+  usageDate: text("usage_date").notNull(),
+  messageCount: integer("message_count").notNull().default(0),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  primaryKey({ columns: [table.identityHash, table.usageDate] }),
+]);

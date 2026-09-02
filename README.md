@@ -50,6 +50,7 @@ The contest demonstration uses **Orpheus**, poet of Thrace:
 - Persistent remote characters stored in Cloudflare D1.
 - Generated avatar files stored in R2.
 - Character conversations powered server-side through OpenRouter.
+- Server-enforced limit of 30 chat messages per user and per Paris calendar day.
 - Per-character response length and weighted relationship filaments.
 - Local character creator with DiceBear fallback avatars.
 - Server-side authorization for all WebMCP write operations.
@@ -101,7 +102,7 @@ Never commit a populated `.env.local` file or an API key.
 
 ```bash
 npm run build
-node --test tests/webmcp-tools.test.mjs tests/map-avatar-markers.test.mjs
+node --test tests/chat-quota.test.mjs tests/webmcp-tools.test.mjs tests/map-avatar-markers.test.mjs
 npm run lint
 ```
 
@@ -120,6 +121,8 @@ Then demonstrate a reversible edit on a disposable draft before opening the huma
 ## Security and human control
 
 - Secrets remain server-side.
+- Chat usage is counted atomically in D1 and blocked before the model call after 30 daily messages.
+- User identities are hashed before quota records are stored; anonymous visitors receive an HTTP-only device identifier.
 - WebMCP write endpoints require an authorized account.
 - Generated-image downloads validate protocols, redirects, content type, and size.
 - Publication is separated from the agent request and requires a human interface action.

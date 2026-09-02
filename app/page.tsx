@@ -265,6 +265,7 @@ export default function Home() {
   const [mapError, setMapError] = useState<string | null>(null);
   const [mapTheme, setMapTheme] = useState<MapThemeId>("lagon");
   const [isSending, setIsSending] = useState(false);
+  const [chatQuotaRemaining, setChatQuotaRemaining] = useState<number | null>(null);
   const [customCharacters, setCustomCharacters] = useState<Character[]>([]);
   const [remoteCharacters, setRemoteCharacters] = useState<RemoteCharacter[]>([]);
   const [creatorOpen, setCreatorOpen] = useState(false);
@@ -574,7 +575,10 @@ export default function Home() {
       const data = await response.json() as {
         text?: string;
         error?: string;
+        quota?: { limit: number; remaining: number; day: string };
       };
+
+      if (data.quota) setChatQuotaRemaining(data.quota.remaining);
 
       if (!response.ok) {
         throw new Error(data.error || "Le personnage ne peut pas répondre pour le moment.");
@@ -839,7 +843,12 @@ export default function Home() {
 
               <div className="messages" aria-live="polite">
                 <p className="simulation-note live">
-                  CONVERSATION AVEC {CHAT_MODEL_LABEL.toLocaleUpperCase("fr")} · AUCUNE CLÉ REQUISE
+                  CONVERSATION AVEC {CHAT_MODEL_LABEL.toLocaleUpperCase("fr")} · 30 MESSAGES PAR JOUR
+                </p>
+                <p className="chat-quota-note">
+                  {chatQuotaRemaining === null
+                    ? "Le compteur s’actualise après ton premier message."
+                    : `${chatQuotaRemaining} message${chatQuotaRemaining > 1 ? "s" : ""} restant${chatQuotaRemaining > 1 ? "s" : ""} aujourd’hui.`}
                 </p>
                 {messages.map((message, index) => (
                   <div key={`${message.from}-${index}`} className={`message ${message.from}`}>
@@ -860,9 +869,9 @@ export default function Home() {
                   onChange={(event) => setDraft(event.target.value)}
                   placeholder={`Écrire à ${selected.name}…`}
                   aria-label={`Message pour ${selected.name}`}
-                  disabled={isSending}
+                  disabled={isSending || chatQuotaRemaining === 0}
                 />
-                <button type="submit" aria-label="Envoyer le message" disabled={isSending}>
+                <button type="submit" aria-label="Envoyer le message" disabled={isSending || chatQuotaRemaining === 0}>
                   {isSending ? <LoaderCircle className="spin-icon" size={18} /> : <CornerDownLeft size={18} />}
                 </button>
               </form>

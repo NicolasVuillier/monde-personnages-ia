@@ -1,5 +1,6 @@
 import { CHAT_MODEL } from "@/features/chat/config";
 import type { ResponseLength } from "@/features/characters/types";
+import { quotaHeaders, reserveDailyChatMessage, type ChatQuota } from "@/server/chat-quota";
 import { findRemoteCharacter } from "@/server/characters";
 
 export const runtime = "edge";
@@ -36,6 +37,14 @@ const RESPONSE_PROFILES: Record<ResponseLength, { maxTokens: number; instruction
 
 function cleanResponseLength(value: unknown): ResponseLength {
   return value === "courte" || value === "developpee" ? value : "standard";
+}
+
+function publicQuota(quota: ChatQuota) {
+  return {
+    day: quota.day,
+    limit: quota.limit,
+    remaining: quota.remaining,
+  };
 }
 
 export async function POST(request: Request) {
@@ -81,6 +90,28 @@ export async function POST(request: Request) {
     return Response.json({ error: "Conversation incomplète." }, { status: 400 });
   }
 
+  let quota: ChatQuota;
+
+  try {
+    quota = await reserveDailyChatMessage(request);
+  } catch (error) {
+    console.error("Chat quota unavailable", error instanceof Error ? error.message : error);
+    return Response.json(
+      { error: "Le compteur de messages est momentanément indisponible. Réessaie dans un instant." },
+      { status: 503 },
+    );
+  }
+
+  if (!quota.allowed) {
+    return Response.json(
+      {
+        error: "Tu as atteint la limite de 30 messages pour aujourd’hui. Tu pourras reprendre demain à minuit, heure de Paris.",
+        quota: publicQuota(quota),
+      },
+      { status: 429, headers: quotaHeaders(quota) },
+    );
+  }
+
   try {
     const upstream = await fetch(OPENROUTER_URL, {
       method: "POST",
@@ -117,22 +148,28 @@ export async function POST(request: Request) {
     if (!upstream.ok) {
       console.error("OpenRouter chat error", upstream.status, data.error?.message);
       return Response.json(
-        { error: "Le personnage ne peut pas répondre pour le moment." },
-        { status: upstream.status === 429 ? 429 : 502 },
+        { error: "Le personnage ne peut pas répondre pour le moment.", quota: publicQuota(quota) },
+        { status: upstream.status === 429 ? 429 : 502, headers: quotaHeaders(quota) },
       );
     }
 
     const text = data.choices?.[0]?.message?.content?.trim();
     if (!text) {
-      return Response.json({ error: "La réponse reçue était vide." }, { status: 502 });
+      return Response.json(
+        { error: "La réponse reçue était vide.", quota: publicQuota(quota) },
+        { status: 502, headers: quotaHeaders(quota) },
+      );
     }
 
-    return Response.json({ text });
+    return Response.json(
+      { text, quota: publicQuota(quota) },
+      { headers: quotaHeaders(quota) },
+    );
   } catch (error) {
     console.error("Chat request failed", error instanceof Error ? error.message : error);
     return Response.json(
-      { error: "La connexion au personnage a échoué. Réessaie dans un instant." },
-      { status: 502 },
+      { error: "La connexion au personnage a échoué. Réessaie dans un instant.", quota: publicQuota(quota) },
+      { status: 502, headers: quotaHeaders(quota) },
     );
   }
 }
