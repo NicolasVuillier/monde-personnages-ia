@@ -1,0 +1,23 @@
+CREATE TABLE `characters` (
+	`id` text PRIMARY KEY NOT NULL,
+	`name` text NOT NULL,
+	`subtitle` text NOT NULL,
+	`category` text NOT NULL,
+	`location` text NOT NULL,
+	`era` text NOT NULL,
+	`lng` real NOT NULL,
+	`lat` real NOT NULL,
+	`color` text NOT NULL,
+	`avatar` text NOT NULL,
+	`popularity` real DEFAULT 0.7 NOT NULL,
+	`description` text NOT NULL,
+	`greeting` text NOT NULL,
+	`reply` text NOT NULL,
+	`relations` text DEFAULT '[]' NOT NULL,
+	`status` text DEFAULT 'draft' NOT NULL,
+	`owner_email` text NOT NULL,
+	`avatar_prompt` text,
+	`avatar_provider` text,
+	`created_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	`updated_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
