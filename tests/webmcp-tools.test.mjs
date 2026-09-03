@@ -74,6 +74,7 @@ test("registers immediate creation and direct editing tools", async () => {
         "update_world_character",
         "generate_character_avatar",
         "show_characters_on_map",
+        "delete_world_characters",
       ],
     );
 
@@ -94,6 +95,9 @@ test("registers immediate creation and direct editing tools", async () => {
     const updateTool = registered.find((tool) => tool.name === "update_world_character");
     assert.deepEqual(updateTool.inputSchema.properties.changes.properties.responseLength.enum, ["courte", "standard", "developpee"]);
     assert.deepEqual(updateTool.inputSchema.properties.changes.properties.relationChanges.items.properties.action.enum, ["add", "remove", "set_strength"]);
+
+    const deleteTool = registered.find((tool) => tool.name === "delete_world_characters");
+    assert.equal(deleteTool.inputSchema.properties.ids.maxItems, 20);
 
     registration.dispose();
   } finally {
