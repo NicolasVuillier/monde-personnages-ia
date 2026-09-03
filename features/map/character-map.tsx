@@ -1,10 +1,11 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { FeatureCollection, LineString, Point } from "geojson";
 import type { GeoJSONSource, Map as MapLibreMap, MapLayerMouseEvent } from "maplibre-gl";
 import type { Category, Character } from "@/features/characters/types";
 import { stylizeWorldMap, type MapThemeId } from "./themes";
+import { FlatCharacterMap } from "./flat-character-map";
 
 type CharacterFilter = "Tous" | Category;
 
@@ -310,7 +311,11 @@ function relationshipData(
   };
 }
 
-export const CharacterMap = forwardRef<CharacterMapHandle, CharacterMapProps>(
+type MapLibreCharacterMapProps = CharacterMapProps & {
+  onFallback: () => void;
+};
+
+const MapLibreCharacterMap = forwardRef<CharacterMapHandle, MapLibreCharacterMapProps>(
   function CharacterMap(
     {
       characters,
@@ -322,6 +327,7 @@ export const CharacterMap = forwardRef<CharacterMapHandle, CharacterMapProps>(
       onPlacement,
       onReady,
       onError,
+      onFallback,
     },
     forwardedRef,
   ) {
@@ -339,6 +345,7 @@ export const CharacterMap = forwardRef<CharacterMapHandle, CharacterMapProps>(
     const placementRef = useRef(onPlacement);
     const readyCallbackRef = useRef(onReady);
     const errorCallbackRef = useRef(onError);
+    const fallbackCallbackRef = useRef(onFallback);
 
     charactersRef.current = characters;
     filterRef.current = activeFilter;
@@ -349,6 +356,7 @@ export const CharacterMap = forwardRef<CharacterMapHandle, CharacterMapProps>(
     placementRef.current = onPlacement;
     readyCallbackRef.current = onReady;
     errorCallbackRef.current = onError;
+    fallbackCallbackRef.current = onFallback;
 
     useImperativeHandle(forwardedRef, () => ({
       focusCharacter(character, allCharacters) {
@@ -400,18 +408,24 @@ export const CharacterMap = forwardRef<CharacterMapHandle, CharacterMapProps>(
 
       async function initializeMap() {
         if (!containerRef.current || mapRef.current) return;
-        const maplibregl = await import("maplibre-gl");
-        if (cancelled || !containerRef.current) return;
-
-        const map = new maplibregl.Map({
-          container: containerRef.current,
-          style: "https://tiles.openfreemap.org/styles/liberty",
-          center: [12, 27],
-          zoom: 1.65,
-          minZoom: 1.25,
-          maxZoom: 20,
-          attributionControl: false,
-        });
+        let maplibregl: typeof import("maplibre-gl");
+        let map: MapLibreMap;
+        try {
+          maplibregl = await import("maplibre-gl");
+          if (cancelled || !containerRef.current) return;
+          map = new maplibregl.Map({
+            container: containerRef.current,
+            style: "https://tiles.openfreemap.org/styles/liberty",
+            center: [12, 27],
+            zoom: 1.65,
+            minZoom: 1.25,
+            maxZoom: 20,
+            attributionControl: false,
+          });
+        } catch {
+          if (!cancelled) fallbackCallbackRef.current();
+          return;
+        }
 
         mapRef.current = map;
         loadTimer = window.setTimeout(() => {
@@ -730,6 +744,12 @@ export const CharacterMap = forwardRef<CharacterMapHandle, CharacterMapProps>(
           readyRef.current = true;
           readyCallbackRef.current();
         });
+
+        map.on("error", (event) => {
+          if (!hasLoaded && /webgl|gpu|context/i.test(String(event.error?.message ?? ""))) {
+            fallbackCallbackRef.current();
+          }
+        });
       }
 
       initializeMap();
@@ -774,5 +794,28 @@ export const CharacterMap = forwardRef<CharacterMapHandle, CharacterMapProps>(
         aria-label="Carte mondiale interactive des personnages"
       />
     );
+  },
+);
+
+function hasWebGL2() {
+  try {
+    const canvas = document.createElement("canvas");
+    return Boolean(canvas.getContext("webgl2"));
+  } catch {
+    return false;
+  }
+}
+
+export const CharacterMap = forwardRef<CharacterMapHandle, CharacterMapProps>(
+  function CharacterMap(props, forwardedRef) {
+    const [mode, setMode] = useState<"checking" | "maplibre" | "flat">("checking");
+
+    useEffect(() => {
+      setMode(hasWebGL2() ? "maplibre" : "flat");
+    }, []);
+
+    if (mode === "checking") return <div className="map-canvas" aria-hidden="true" />;
+    if (mode === "flat") return <FlatCharacterMap ref={forwardedRef} {...props} />;
+    return <MapLibreCharacterMap ref={forwardedRef} {...props} onFallback={() => setMode("flat")} />;
   },
 );
