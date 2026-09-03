@@ -1,6 +1,6 @@
 # Le Monde des Personnages IA
 
-An interactive world map where people can discover and talk with historical, mythological, and original AI characters — and where a browser agent can create, edit, illustrate, place, inspect, and prepare those characters for publication through WebMCP.
+An interactive world map where people can discover and talk with historical, mythological, and original AI characters — and where a browser agent can create, edit, illustrate, place, and inspect those characters through WebMCP.
 
 **Live application:** https://monde-personnages-ia.nicoco-vu.chatgpt.site/
 
@@ -10,25 +10,23 @@ Built by **Nicolas Vuillier** for the **OpenAI WebMCP Challenge 2026**.
 
 Creating a believable character is not a single form submission. It combines writing, geography, visual direction, relationships, map placement, and editorial review. WebMCP lets the user describe the result in natural language while the agent performs those structured operations directly inside the application.
 
-The application keeps the human in control:
+The interaction stays direct and understandable:
 
-1. the agent creates a draft;
-2. the draft appears on the map;
+1. the user describes a character;
+2. the agent creates it and it appears immediately on the map;
 3. the user reviews the text, avatar, location, and relationships;
-4. the agent can apply requested corrections without recreating the character;
-5. publication always requires an explicit human confirmation in the interface.
+4. the agent applies requested corrections without recreating the character or its avatar.
 
 ## WebMCP tools
 
 | Tool | Purpose |
 | --- | --- |
-| `list_world_characters` | Lists visible characters and drafts. |
+| `list_world_characters` | Lists all visible characters. |
 | `get_world_character` | Reads a complete character profile without changing it. |
-| `create_character_drafts` | Creates and geolocates up to 20 drafts. |
+| `create_world_characters` | Creates, geolocates, and immediately displays up to 20 characters. |
 | `update_world_character` | Edits identity, editorial content, response length, coordinates, and targeted relationships while preserving the avatar. |
-| `generate_character_avatar` | Generates one historical portrait with FLUX and attaches it to a draft. |
+| `generate_character_avatar` | Generates one historical portrait with FLUX and attaches it to a character. |
 | `show_characters_on_map` | Focuses the map on selected characters for visual review. |
-| `request_publish_characters` | Opens the human publication review; it never publishes by itself. |
 
 Targeted relationship changes support `add`, `remove`, and `set_strength`. Character response length can be set to `courte`, `standard`, or `developpee`.
 
@@ -40,8 +38,8 @@ The contest demonstration uses **Orpheus**, poet of Thrace:
 - placed in the Rhodope Mountains (41.59, 24.69);
 - generated historical avatar with his lyre;
 - links to Apollo, Dionysus, Jason, Hades, and Persephone;
-- draft visible on the map;
-- human confirmation required before publication.
+- immediately visible on the map;
+- editable afterwards without recreating the character or avatar.
 
 ## Main features
 
@@ -117,7 +115,7 @@ Suggested safe test:
 
 > Read Orpheus's complete profile. Do not modify him, generate an image, or publish anything.
 
-Then demonstrate a reversible edit on a disposable draft before opening the human publication review.
+Then create a disposable character and demonstrate a direct edit to its response length or relationships.
 
 ## Security and human control
 
@@ -126,7 +124,7 @@ Then demonstrate a reversible edit on a disposable draft before opening the huma
 - User identities are hashed before quota records are stored; anonymous visitors receive an HTTP-only device identifier.
 - WebMCP write endpoints require an authorized account.
 - Generated-image downloads validate protocols, redirects, content type, and size.
-- Publication is separated from the agent request and requires a human interface action.
+- Every write operation requires the authorized WebMCP account and begins with an explicit user instruction.
 - Avatar generation is never triggered by an ordinary character edit.
 
 ## License
