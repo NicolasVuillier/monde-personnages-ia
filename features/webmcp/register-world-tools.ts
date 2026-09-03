@@ -4,7 +4,6 @@ type ToolCallbacks = {
   getCharacters: () => Character[];
   refreshCharacters: (preferredIds?: string[]) => Promise<void>;
   focusCharacters: (ids: string[]) => void;
-  requestPublicationReview: (ids: string[]) => void;
   reportActivity: (message: string) => void;
 };
 
@@ -87,7 +86,7 @@ export function registerWorldTools(callbacks: ToolCallbacks): { available: boole
   register({
     name: "list_world_characters",
     title: "Lister les personnages de la carte",
-    description: "Retourne les personnages actuellement visibles dans l’application, y compris les brouillons accessibles au propriétaire.",
+    description: "Retourne tous les personnages actuellement visibles dans l’application.",
     inputSchema: { type: "object", additionalProperties: false, properties: {} },
     annotations: { readOnlyHint: true },
     execute() {
@@ -100,9 +99,9 @@ export function registerWorldTools(callbacks: ToolCallbacks): { available: boole
   });
 
   register({
-    name: "create_character_drafts",
-    title: "Créer plusieurs brouillons de personnages",
-    description: "Crée et place de 1 à 20 personnages sur la carte en une opération. Les personnages restent en brouillon et doivent être confirmés par l’utilisateur avant publication.",
+    name: "create_world_characters",
+    title: "Créer et placer des personnages",
+    description: "Crée de 1 à 20 personnages, les enregistre et les affiche immédiatement sur la carte.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -112,16 +111,16 @@ export function registerWorldTools(callbacks: ToolCallbacks): { available: boole
       required: ["characters"],
     },
     async execute(input) {
-      callbacks.reportActivity("L’agent prépare les nouveaux personnages…");
+      callbacks.reportActivity("L’agent crée les nouveaux personnages…");
       const data = await callApi("/api/characters", { method: "POST", body: JSON.stringify(input) });
       const characters = Array.isArray(data.characters) ? data.characters as Array<{ id?: string; name?: string }> : [];
       const ids = characters.map((character) => character.id).filter((id): id is string => typeof id === "string");
       await callbacks.refreshCharacters(ids);
       callbacks.focusCharacters(ids);
-      callbacks.reportActivity(`${ids.length} brouillon${ids.length > 1 ? "s" : ""} placé${ids.length > 1 ? "s" : ""} sur la carte.`);
+      callbacks.reportActivity(`${ids.length} personnage${ids.length > 1 ? "s" : ""} créé${ids.length > 1 ? "s" : ""} et affiché${ids.length > 1 ? "s" : ""}.`);
       return {
         created: characters,
-        publication: "Les brouillons sont visibles. Utilise request_publish_characters pour demander la validation humaine.",
+        visibility: "published",
       };
     },
   });
@@ -181,12 +180,12 @@ export function registerWorldTools(callbacks: ToolCallbacks): { available: boole
   register({
     name: "generate_character_avatar",
     title: "Générer l’avatar historique d’un personnage",
-    description: "Génère avec FLUX.2 un portrait carré, dessiné et adapté à une pastille de carte, puis l’attache au brouillon indiqué. Cette action consomme un petit crédit d’image.",
+    description: "Génère avec FLUX.2 un portrait carré, dessiné et adapté à une pastille de carte, puis l’attache au personnage indiqué. Cette action consomme un petit crédit d’image.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
       properties: {
-        id: { type: "string", description: "Identifiant exact du brouillon." },
+        id: { type: "string", description: "Identifiant exact du personnage." },
         visualDescription: { type: "string", description: "Attributs visuels emblématiques à faire apparaître, sans répéter les règles générales de style." },
       },
       required: ["id"],
@@ -200,7 +199,7 @@ export function registerWorldTools(callbacks: ToolCallbacks): { available: boole
       });
       await callbacks.refreshCharacters([id]);
       callbacks.focusCharacters([id]);
-      callbacks.reportActivity("L’avatar FLUX est prêt et attaché au brouillon.");
+      callbacks.reportActivity("L’avatar FLUX est prêt et visible sur la carte.");
       return data;
     },
   });
@@ -220,25 +219,6 @@ export function registerWorldTools(callbacks: ToolCallbacks): { available: boole
       const safeIds = Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string").slice(0, 20) : [];
       callbacks.focusCharacters(safeIds);
       return { shown: safeIds };
-    },
-  });
-
-  register({
-    name: "request_publish_characters",
-    title: "Demander la publication de personnages",
-    description: "Ouvre dans l’application une validation humaine pour publier les brouillons indiqués. Cet outil ne contourne jamais la confirmation de l’utilisateur.",
-    inputSchema: {
-      type: "object",
-      additionalProperties: false,
-      properties: { ids: { type: "array", minItems: 1, maxItems: 20, items: { type: "string" } } },
-      required: ["ids"],
-    },
-    execute({ ids }) {
-      const safeIds = Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string").slice(0, 20) : [];
-      if (safeIds.length === 0) throw new Error("Aucun brouillon n’a été indiqué.");
-      callbacks.requestPublicationReview(safeIds);
-      callbacks.focusCharacters(safeIds);
-      return { status: "awaiting_human_confirmation", ids: safeIds };
     },
   });
 
