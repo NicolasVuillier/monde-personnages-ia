@@ -6,7 +6,7 @@ type CharacterResponse = {
 };
 
 export async function loadRemoteCharacters(): Promise<RemoteCharacter[]> {
-  const response = await fetch("/api/characters?include=drafts", {
+  const response = await fetch("/api/characters", {
     headers: { accept: "application/json" },
     cache: "no-store",
   });
