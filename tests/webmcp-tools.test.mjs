@@ -5,7 +5,7 @@ import { createServer } from "vite";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 
-test("registers a batch creation flow with human publication review", async () => {
+test("registers immediate creation and direct editing tools", async () => {
   const vite = await createServer({
     appType: "custom",
     configFile: false,
@@ -35,7 +35,6 @@ test("registers a batch creation flow with human publication review", async () =
     const { registerWorldTools } = await vite.ssrLoadModule("/features/webmcp/register-world-tools.ts");
     const refreshed = [];
     const focused = [];
-    const reviewed = [];
     const orphee = {
       id: "orphee-test",
       name: "Orphée",
@@ -54,14 +53,13 @@ test("registers a batch creation flow with human publication review", async () =
       relations: ["apollon", "dionysos"],
       relationStrengths: { apollon: 0.7, dionysos: 0.9 },
       responseLength: "developpee",
-      status: "draft",
+      status: "published",
       isRemote: true,
     };
     const registration = registerWorldTools({
       getCharacters: () => [orphee],
       refreshCharacters: async (ids) => refreshed.push(ids),
       focusCharacters: (ids) => focused.push(ids),
-      requestPublicationReview: (ids) => reviewed.push(ids),
       reportActivity: () => undefined,
     });
 
@@ -71,20 +69,20 @@ test("registers a batch creation flow with human publication review", async () =
       registered.map((tool) => tool.name),
       [
         "list_world_characters",
-        "create_character_drafts",
+        "create_world_characters",
         "get_world_character",
         "update_world_character",
         "generate_character_avatar",
         "show_characters_on_map",
-        "request_publish_characters",
       ],
     );
 
-    const createTool = registered.find((tool) => tool.name === "create_character_drafts");
+    const createTool = registered.find((tool) => tool.name === "create_world_characters");
     const created = await createTool.execute({ characters: [{ name: "Athéna" }, { name: "Orphée" }] });
     assert.deepEqual(refreshed, [["athena-test", "orphee-test"]]);
     assert.deepEqual(focused, [["athena-test", "orphee-test"]]);
     assert.equal(created.created.length, 2);
+    assert.equal(created.visibility, "published");
 
     const getTool = registered.find((tool) => tool.name === "get_world_character");
     const detail = getTool.execute({ id: "orphee-test" });
@@ -97,10 +95,6 @@ test("registers a batch creation flow with human publication review", async () =
     assert.deepEqual(updateTool.inputSchema.properties.changes.properties.responseLength.enum, ["courte", "standard", "developpee"]);
     assert.deepEqual(updateTool.inputSchema.properties.changes.properties.relationChanges.items.properties.action.enum, ["add", "remove", "set_strength"]);
 
-    const publishTool = registered.find((tool) => tool.name === "request_publish_characters");
-    const publication = publishTool.execute({ ids: ["athena-test", "orphee-test"] });
-    assert.deepEqual(reviewed, [["athena-test", "orphee-test"]]);
-    assert.equal(publication.status, "awaiting_human_confirmation");
     registration.dispose();
   } finally {
     globalThis.document = originalDocument;
