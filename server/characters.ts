@@ -84,18 +84,17 @@ function rowToCharacter(row: CharacterRow): RemoteCharacter {
     relations: parseRelations(row.relations),
     relationStrengths: parseRelationStrengths(row.relation_strengths),
     responseLength: parseResponseLength(row.response_length),
-    status: row.status === "published" ? "published" : "draft",
+    // Les anciens brouillons sont rendus publics lors de leur prochaine lecture.
+    status: "published",
     isRemote: true,
     isCustom: true,
   };
 }
 
-export async function listRemoteCharacters(includeDrafts: boolean): Promise<RemoteCharacter[]> {
-  const db = getDb();
-  const statement = includeDrafts
-    ? db.prepare(`SELECT ${SELECT_COLUMNS} FROM characters ORDER BY updated_at DESC`)
-    : db.prepare(`SELECT ${SELECT_COLUMNS} FROM characters WHERE status = ? ORDER BY updated_at DESC`).bind("published");
-  const result = await statement.all<CharacterRow>();
+export async function listRemoteCharacters(): Promise<RemoteCharacter[]> {
+  const result = await getDb()
+    .prepare(`SELECT ${SELECT_COLUMNS} FROM characters ORDER BY updated_at DESC`)
+    .all<CharacterRow>();
   return result.results.map(rowToCharacter);
 }
 
@@ -171,11 +170,20 @@ export async function replaceRemoteCharacter(
   ).run();
 }
 
-export async function publishRemoteCharacters(ids: string[]): Promise<void> {
+export async function deleteRemoteCharacters(ids: string[]): Promise<string[]> {
+  const uniqueIds = [...new Set(ids)].slice(0, 20);
+  if (uniqueIds.length === 0) return [];
+
   const db = getDb();
-  await db.batch(ids.map((id) => db.prepare(`
-    UPDATE characters SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
-  `).bind("published", id)));
+  const existing = await Promise.all(uniqueIds.map(async (id) => {
+    const row = await db.prepare("SELECT id FROM characters WHERE id = ? LIMIT 1").bind(id).first<{ id: string }>();
+    return row?.id;
+  }));
+  const foundIds = existing.filter((id): id is string => typeof id === "string");
+  if (foundIds.length === 0) return [];
+
+  await db.batch(foundIds.map((id) => db.prepare("DELETE FROM characters WHERE id = ?").bind(id)));
+  return foundIds;
 }
 
 export async function setGeneratedAvatar(
