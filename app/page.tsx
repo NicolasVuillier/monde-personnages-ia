@@ -255,6 +255,7 @@ const filters: Array<"Tous" | Category> = ["Tous", "Histoire", "Mythes", "Fictio
 
 export default function Home() {
   const mapRef = useRef<CharacterMapHandle>(null);
+  const remoteCharactersRef = useRef<RemoteCharacter[]>([]);
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>("Tous");
   const [selectedId, setSelectedId] = useState("socrate");
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -276,8 +277,6 @@ export default function Home() {
   const [webMcpAvailable, setWebMcpAvailable] = useState(false);
   const [agentActivity, setAgentActivity] = useState("");
   const [isSyncingCharacters, setIsSyncingCharacters] = useState(false);
-  const [reviewCharacterIds, setReviewCharacterIds] = useState<string[]>([]);
-  const [isPublishingCharacters, setIsPublishingCharacters] = useState(false);
 
   const characters = useMemo(
     () => [...starterCharacters, ...mythologyCharacters, ...remoteCharacters, ...customCharacters],
@@ -315,10 +314,16 @@ export default function Home() {
   const refreshRemoteCharacters = useCallback(async (preferredIds: string[] = []) => {
     try {
       const next = await loadRemoteCharacters();
+      remoteCharactersRef.current = next;
       setRemoteCharacters(next);
       if (preferredIds.length > 0) {
-        const preferred = next.find((character) => preferredIds.includes(character.id));
-        if (preferred) setSelectedId(preferred.id);
+        const preferred = next.filter((character) => preferredIds.includes(character.id));
+        if (preferred.length > 0) {
+          setActiveFilter("Tous");
+          setSelectedId(preferred[0].id);
+          setSheetOpen(false);
+          window.setTimeout(() => mapRef.current?.focusCharacters(preferred), 0);
+        }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Les créations WebMCP ne sont pas disponibles.";
@@ -340,9 +345,10 @@ export default function Home() {
     setIsSyncingCharacters(true);
     setAgentActivity("Synchronisation des personnages…");
     try {
-      const previousIds = new Set(remoteCharacters.map((character) => character.id));
+      const previousIds = new Set(remoteCharactersRef.current.map((character) => character.id));
       const next = await loadRemoteCharacters();
       const newCharacters = next.filter((character) => !previousIds.has(character.id));
+      remoteCharactersRef.current = next;
       setRemoteCharacters(next);
 
       if (newCharacters.length > 0) {
@@ -360,7 +366,7 @@ export default function Home() {
     } finally {
       setIsSyncingCharacters(false);
     }
-  }, [isSyncingCharacters, remoteCharacters]);
+  }, [isSyncingCharacters]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void refreshRemoteCharacters(), 0);
@@ -372,37 +378,52 @@ export default function Home() {
   }, [characters]);
 
   useEffect(() => {
+    if (!webMcpAvailable) return;
+    let running = false;
+
+    const poll = async () => {
+      if (running || document.visibilityState !== "visible") return;
+      running = true;
+      try {
+        const previousIds = new Set(remoteCharactersRef.current.map((character) => character.id));
+        const next = await loadRemoteCharacters();
+        const additions = next.filter((character) => !previousIds.has(character.id));
+        remoteCharactersRef.current = next;
+        setRemoteCharacters(next);
+
+        if (additions.length > 0) {
+          const newest = additions[0];
+          setActiveFilter("Tous");
+          setSelectedId(newest.id);
+          setSheetOpen(false);
+          window.setTimeout(() => mapRef.current?.focusCharacters([newest]), 0);
+          setAgentActivity(`${additions.length} nouveau${additions.length > 1 ? "x" : ""} personnage${additions.length > 1 ? "s" : ""} affiché${additions.length > 1 ? "s" : ""} automatiquement.`);
+        }
+      } catch {
+        // Le bouton manuel reste disponible si une synchronisation ponctuelle échoue.
+      } finally {
+        running = false;
+      }
+    };
+
+    const timer = window.setInterval(() => void poll(), 2500);
+    document.addEventListener("visibilitychange", poll);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", poll);
+    };
+  }, [webMcpAvailable]);
+
+  useEffect(() => {
     const registration = registerWorldTools({
       getCharacters: () => charactersRef.current,
       refreshCharacters: refreshRemoteCharacters,
       focusCharacters: focusCharactersById,
-      requestPublicationReview: (ids) => setReviewCharacterIds(ids),
       reportActivity: setAgentActivity,
     });
     setWebMcpAvailable(registration.available);
     return registration.dispose;
   }, [focusCharactersById, refreshRemoteCharacters]);
-
-  async function publishReviewedCharacters() {
-    if (reviewCharacterIds.length === 0 || isPublishingCharacters) return;
-    setIsPublishingCharacters(true);
-    try {
-      const response = await fetch("/api/characters/publish", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: reviewCharacterIds }),
-      });
-      const data = await response.json() as { published?: string[]; error?: string };
-      if (!response.ok) throw new Error(data.error || "La publication a échoué.");
-      await refreshRemoteCharacters(reviewCharacterIds);
-      setAgentActivity(`${reviewCharacterIds.length} personnage${reviewCharacterIds.length > 1 ? "s" : ""} publié${reviewCharacterIds.length > 1 ? "s" : ""}.`);
-      setReviewCharacterIds([]);
-    } catch (error) {
-      setAgentActivity(error instanceof Error ? error.message : "La publication a échoué.");
-    } finally {
-      setIsPublishingCharacters(false);
-    }
-  }
 
   function openCharacter(id: string) {
     const character = characters.find((item) => item.id === id);
@@ -720,36 +741,6 @@ export default function Home() {
         </div>
       )}
 
-      {reviewCharacterIds.length > 0 && (
-        <section className="agent-review" aria-labelledby="agent-review-title">
-          <div className="agent-review-copy">
-            <p className="eyebrow"><Sparkles size={13} /> PROPOSITION DE L’AGENT</p>
-            <h2 id="agent-review-title">
-              {reviewCharacterIds.length} personnage{reviewCharacterIds.length > 1 ? "s" : ""} à publier
-            </h2>
-            <p>Contrôle leur place et leur portrait sur la carte, puis confirme leur apparition publique.</p>
-          </div>
-          <div className="agent-review-avatars" aria-label="Personnages proposés">
-            {characters
-              .filter((character) => reviewCharacterIds.includes(character.id))
-              .slice(0, 6)
-              .map((character) => (
-                <button key={character.id} type="button" onClick={() => openCharacter(character.id)}>
-                  <img src={character.avatar} alt="" />
-                  <span>{character.name}</span>
-                </button>
-              ))}
-          </div>
-          <div className="agent-review-actions">
-            <button type="button" onClick={() => setReviewCharacterIds([])}>Garder en brouillon</button>
-            <button type="button" onClick={publishReviewedCharacters} disabled={isPublishingCharacters}>
-              {isPublishingCharacters ? <LoaderCircle className="spin" size={16} /> : <Check size={16} />}
-              Publier sur la carte
-            </button>
-          </div>
-        </section>
-      )}
-
       {isPlacingCharacter && (
         <div className="placement-banner" role="status">
           <span><MapPin size={18} /></span>
@@ -834,9 +825,7 @@ export default function Home() {
                 <div className="profile-meta">
                   <span>
                     <Users size={15} />
-                    {selected.isRemote
-                      ? selected.status === "draft" ? "Brouillon WebMCP" : "Création publique"
-                      : selected.isCustom ? "Ta création locale" : "Présence publique"}
+                    {selected.isRemote ? "Création WebMCP" : selected.isCustom ? "Ta création locale" : "Présence publique"}
                   </span>
                   <span><MessageCircle size={15} /> Français</span>
                 </div>
