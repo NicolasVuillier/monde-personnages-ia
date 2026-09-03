@@ -222,5 +222,30 @@ export function registerWorldTools(callbacks: ToolCallbacks): { available: boole
     },
   });
 
+  register({
+    name: "delete_world_characters",
+    title: "Supprimer des personnages",
+    description: "Supprime définitivement de 1 à 20 personnages créés avec WebMCP. Utilise cet outil seulement après une confirmation explicite de l’utilisateur.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: { ids: { type: "array", minItems: 1, maxItems: 20, items: { type: "string" } } },
+      required: ["ids"],
+    },
+    async execute({ ids }) {
+      const safeIds = Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string").slice(0, 20) : [];
+      if (safeIds.length === 0) throw new Error("Aucun personnage n’a été indiqué.");
+      callbacks.reportActivity("Suppression des personnages…");
+      const data = await callApi("/api/characters", {
+        method: "DELETE",
+        body: JSON.stringify({ ids: safeIds }),
+      });
+      await callbacks.refreshCharacters();
+      const deleted = Array.isArray(data.deleted) ? data.deleted as string[] : [];
+      callbacks.reportActivity(`${deleted.length} personnage${deleted.length > 1 ? "s" : ""} supprimé${deleted.length > 1 ? "s" : ""}.`);
+      return data;
+    },
+  });
+
   return { available: true, dispose: () => controller.abort() };
 }
