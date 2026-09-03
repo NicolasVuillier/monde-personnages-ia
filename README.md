@@ -27,6 +27,7 @@ The interaction stays direct and understandable:
 | `update_world_character` | Edits identity, editorial content, response length, coordinates, and targeted relationships while preserving the avatar. |
 | `generate_character_avatar` | Generates one historical portrait with FLUX and attaches it to a character. |
 | `show_characters_on_map` | Focuses the map on selected characters for visual review. |
+| `delete_world_characters` | Permanently removes selected WebMCP characters after explicit user confirmation. |
 
 Targeted relationship changes support `add`, `remove`, and `set_strength`. Character response length can be set to `courte`, `standard`, or `developpee`.
 
