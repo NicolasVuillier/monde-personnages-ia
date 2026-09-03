@@ -275,6 +275,7 @@ export default function Home() {
   const [isPlacingCharacter, setIsPlacingCharacter] = useState(false);
   const [webMcpAvailable, setWebMcpAvailable] = useState(false);
   const [agentActivity, setAgentActivity] = useState("");
+  const [isSyncingCharacters, setIsSyncingCharacters] = useState(false);
   const [reviewCharacterIds, setReviewCharacterIds] = useState<string[]>([]);
   const [isPublishingCharacters, setIsPublishingCharacters] = useState(false);
 
@@ -333,6 +334,33 @@ export default function Home() {
     setSheetOpen(false);
     window.setTimeout(() => mapRef.current?.focusCharacters(targets), 0);
   }, []);
+
+  const syncRemoteCharacters = useCallback(async () => {
+    if (isSyncingCharacters) return;
+    setIsSyncingCharacters(true);
+    setAgentActivity("Synchronisation des personnages…");
+    try {
+      const previousIds = new Set(remoteCharacters.map((character) => character.id));
+      const next = await loadRemoteCharacters();
+      const newCharacters = next.filter((character) => !previousIds.has(character.id));
+      setRemoteCharacters(next);
+
+      if (newCharacters.length > 0) {
+        const newest = newCharacters[newCharacters.length - 1];
+        setActiveFilter("Tous");
+        setSelectedId(newest.id);
+        setSheetOpen(false);
+        window.setTimeout(() => mapRef.current?.focusCharacters([newest]), 0);
+        setAgentActivity(`${newCharacters.length} nouveau${newCharacters.length > 1 ? "x" : ""} personnage${newCharacters.length > 1 ? "s" : ""} affiché${newCharacters.length > 1 ? "s" : ""}.`);
+      } else {
+        setAgentActivity(`${next.length} création${next.length > 1 ? "s" : ""} synchronisée${next.length > 1 ? "s" : ""}.`);
+      }
+    } catch (error) {
+      setAgentActivity(error instanceof Error ? error.message : "La synchronisation a échoué.");
+    } finally {
+      setIsSyncingCharacters(false);
+    }
+  }, [isSyncingCharacters, remoteCharacters]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void refreshRemoteCharacters(), 0);
@@ -678,6 +706,17 @@ export default function Home() {
             <strong>Studio agent connecté</strong>
             <small>{agentActivity || "ChatGPT peut créer, illustrer et placer des personnages avec WebMCP."}</small>
           </p>
+          <button
+            type="button"
+            className="webmcp-sync-button"
+            onClick={() => void syncRemoteCharacters()}
+            disabled={isSyncingCharacters}
+            aria-label="Synchroniser les personnages"
+            title="Synchroniser les personnages"
+          >
+            <RefreshCw className={isSyncingCharacters ? "spin-icon" : ""} size={15} />
+            <span>Synchroniser</span>
+          </button>
         </div>
       )}
 
