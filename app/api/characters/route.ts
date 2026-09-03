@@ -1,4 +1,4 @@
-import { errorResponse, getAuthenticatedEmail, requireWebMcpAdmin } from "@/server/authorization";
+import { errorResponse, requireWebMcpAdmin } from "@/server/authorization";
 import { insertRemoteCharacters, listRemoteCharacters, type NewRemoteCharacter } from "@/server/characters";
 import type { Category, ResponseLength } from "@/features/characters/types";
 
@@ -86,16 +86,14 @@ function toCharacter(input: CharacterInput, ownerEmail: string, index: number): 
     relations,
     relationStrengths: {},
     responseLength: cleanResponseLength(input.responseLength),
-    status: "draft",
+    status: "published",
     ownerEmail,
   };
 }
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const url = new URL(request.url);
-    const includeDrafts = url.searchParams.get("include") === "drafts" && Boolean(getAuthenticatedEmail(request));
-    const characters = await listRemoteCharacters(includeDrafts);
+    const characters = await listRemoteCharacters();
     return Response.json({ characters });
   } catch (error) {
     return errorResponse(error);
