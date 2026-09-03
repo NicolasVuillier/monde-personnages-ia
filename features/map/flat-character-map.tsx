@@ -85,12 +85,34 @@ export const FlatCharacterMap = forwardRef<CharacterMapHandle, FlatCharacterMapP
   ) {
     const containerRef = useRef<HTMLDivElement>(null);
     const dragRef = useRef<DragState | null>(null);
-    const [view, setView] = useState<View>({ lng: 12, lat: 27, zoom: MIN_ZOOM });
+    const [view, setView] = useState<View>({ lng: 12, lat: 0, zoom: MIN_ZOOM });
+    const [viewport, setViewport] = useState({ width: 0, height: 0 });
 
     useEffect(() => {
       onError(null);
       onReady();
     }, [onError, onReady]);
+
+    useEffect(() => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      const updateViewport = () => {
+        const bounds = container.getBoundingClientRect();
+        setViewport((current) => {
+          const width = Math.round(bounds.width);
+          const height = Math.round(bounds.height);
+          return current.width === width && current.height === height
+            ? current
+            : { width, height };
+        });
+      };
+
+      updateViewport();
+      const observer = new ResizeObserver(updateViewport);
+      observer.observe(container);
+      return () => observer.disconnect();
+    }, []);
 
     useImperativeHandle(forwardedRef, () => ({
       focusCharacter(character) {
@@ -105,7 +127,7 @@ export const FlatCharacterMap = forwardRef<CharacterMapHandle, FlatCharacterMapP
         });
       },
       resetWorld() {
-        setView({ lng: 12, lat: 27, zoom: MIN_ZOOM });
+        setView({ lng: 12, lat: 0, zoom: MIN_ZOOM });
       },
     }), []);
 
@@ -117,13 +139,14 @@ export const FlatCharacterMap = forwardRef<CharacterMapHandle, FlatCharacterMapP
     }, [activeFilter, characters]);
 
     const centerPoint = project(view.lng, view.lat, view.zoom);
-    const tileRadius = 3;
+    const horizontalTileRadius = Math.max(3, Math.ceil(viewport.width / TILE_SIZE / 2) + 1);
+    const verticalTileRadius = Math.max(3, Math.ceil(viewport.height / TILE_SIZE / 2) + 1);
     const centerTileX = Math.floor(centerPoint.x / TILE_SIZE);
     const centerTileY = Math.floor(centerPoint.y / TILE_SIZE);
     const tileCount = 2 ** view.zoom;
     const tiles = [] as Array<{ key: string; x: number; y: number; left: number; top: number }>;
-    for (let xOffset = -tileRadius; xOffset <= tileRadius; xOffset += 1) {
-      for (let yOffset = -tileRadius; yOffset <= tileRadius; yOffset += 1) {
+    for (let xOffset = -horizontalTileRadius; xOffset <= horizontalTileRadius; xOffset += 1) {
+      for (let yOffset = -verticalTileRadius; yOffset <= verticalTileRadius; yOffset += 1) {
         const rawX = centerTileX + xOffset;
         const rawY = centerTileY + yOffset;
         if (rawY < 0 || rawY >= tileCount) continue;
@@ -229,7 +252,11 @@ export const FlatCharacterMap = forwardRef<CharacterMapHandle, FlatCharacterMapP
               src={`https://tile.openstreetmap.org/${view.zoom}/${tile.x}/${tile.y}.png`}
               alt=""
               draggable={false}
-              style={{ transform: `translate(calc(50% + ${tile.left}px), calc(50% + ${tile.top}px))` }}
+              style={{
+                left: "50%",
+                top: "50%",
+                transform: `translate(${tile.left}px, ${tile.top}px)`,
+              }}
             />
           ))}
         </div>
