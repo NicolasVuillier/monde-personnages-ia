@@ -46,6 +46,7 @@ The contest demonstration uses **Orpheus**, poet of Thrace:
 ## Main features
 
 - MapLibre world map with avatar markers and multi-scale clustering.
+- Automatic flat OpenStreetMap fallback when WebGL2 is unavailable (including constrained WebMCP browsers), with avatars, pan, zoom, relationships and WebMCP focus preserved.
 - Periscope-inspired marker dispatch while zooming.
 - Persistent remote characters stored in Cloudflare D1.
 - Generated avatar files stored in R2.
