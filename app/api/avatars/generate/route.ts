@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     if (!id) return Response.json({ error: "Précise le personnage à illustrer." }, { status: 400 });
 
     const character = await findRemoteCharacter(id);
-    if (!character) return Response.json({ error: "Crée d’abord le brouillon du personnage." }, { status: 404 });
+    if (!character) return Response.json({ error: "Crée d’abord le personnage." }, { status: 404 });
 
     const prompt = buildHistoricalAvatarPrompt(
       character.name,
