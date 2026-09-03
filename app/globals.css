@@ -375,6 +375,9 @@ button { color: inherit; }
 .webmcp-status p { margin: 0; }
 .webmcp-status strong { display: block; color: #d9fff0; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
 .webmcp-status small { display: block; margin-top: 3px; color: #789087; font-size: 9px; line-height: 1.35; }
+.webmcp-sync-button { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; height: 31px; margin-left: 3px; padding: 0 9px; border: 1px solid rgba(122,241,197,.22); border-radius: 7px; background: rgba(122,241,197,.08); color: #a8f0d5; font-size: 10px; cursor: pointer; }
+.webmcp-sync-button:hover { border-color: rgba(122,241,197,.42); background: rgba(122,241,197,.14); color: #eafff7; }
+.webmcp-sync-button:disabled { cursor: wait; opacity: .62; }
 
 .agent-review {
   position: absolute;
@@ -734,6 +737,8 @@ button { color: inherit; }
   .ai-free-badge span, .creator-button span { display: none; }
   .webmcp-status { top: 79px; right: 12px; max-width: calc(100vw - 24px); }
   .webmcp-status small { display: none; }
+  .webmcp-sync-button span { display: none; }
+  .webmcp-sync-button { width: 32px; padding: 0; justify-content: center; }
   .agent-review { bottom: 12px; grid-template-columns: 1fr; gap: 10px; max-height: 50dvh; overflow-y: auto; padding: 14px; }
   .agent-review-copy > p:last-child { display: none; }
   .agent-review-avatars { overflow-x: auto; padding-bottom: 2px; }
