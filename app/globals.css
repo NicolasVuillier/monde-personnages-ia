@@ -573,6 +573,28 @@ button { color: inherit; }
 .map-error button { height: 38px; padding: 0 16px; border: 0; border-radius: 6px; background: #a8f0d5; color: #071b14; font-size: 12px; font-weight: 700; cursor: pointer; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+.flat-map { position: absolute; inset: 0; overflow: hidden; touch-action: none; background: #8fcbd4; cursor: grab; }
+.flat-map:active { cursor: grabbing; }
+.flat-map.is-placing { cursor: crosshair; }
+.flat-map-tiles, .flat-map-markers, .flat-map-relations { position: absolute; inset: 0; }
+.flat-map-tiles img { position: absolute; width: 256px; height: 256px; max-width: none; user-select: none; filter: saturate(.76) contrast(.92) brightness(1.05); }
+.flat-map--pastel .flat-map-tiles img { filter: saturate(.55) hue-rotate(12deg) brightness(1.08); }
+.flat-map--atlas .flat-map-tiles img { filter: saturate(.82) sepia(.08) brightness(1.05); }
+.flat-map--graphite .flat-map-tiles img { filter: saturate(.18) contrast(.88) brightness(1.08); }
+.flat-map--nuit .flat-map-tiles img { filter: invert(.88) hue-rotate(165deg) saturate(.75) brightness(.55); }
+.flat-map::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% 45%, transparent 48%, rgba(3,12,10,.2)); }
+.flat-map-relations { z-index: 2; pointer-events: none; }
+.flat-map-relations i { position: absolute; display: block; height: 2px; transform-origin: left center; background: repeating-linear-gradient(90deg, #baffec 0 7px, transparent 7px 13px); filter: drop-shadow(0 0 5px rgba(159,255,224,.65)); }
+.flat-map-markers { z-index: 3; pointer-events: none; }
+.flat-character-marker { --marker-color: #8cf0ce; position: absolute; width: 58px; height: 58px; padding: 0; border: 3px solid rgba(255,255,255,.94); border-radius: 50%; background: var(--marker-color); box-shadow: 0 0 0 5px color-mix(in srgb, var(--marker-color) 28%, transparent), 0 7px 22px rgba(3,12,10,.3); transform: translate(-50%, -50%); pointer-events: auto; cursor: pointer; transition: transform .18s ease, box-shadow .18s ease; }
+.flat-character-marker:hover, .flat-character-marker.is-selected { z-index: 2; transform: translate(-50%, -50%) scale(1.12); box-shadow: 0 0 0 6px color-mix(in srgb, var(--marker-color) 38%, transparent), 0 10px 28px rgba(3,12,10,.42); }
+.flat-character-marker img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; background: #17322b; }
+.flat-character-marker span { position: absolute; top: calc(100% + 7px); left: 50%; width: max-content; max-width: 150px; padding: 3px 6px; border-radius: 4px; background: rgba(3,12,10,.78); color: #f2fff9; font-size: 10px; line-height: 1.15; text-shadow: 0 1px 2px #000; transform: translateX(-50%); }
+.flat-map-controls { position: absolute; z-index: 10; right: 27px; bottom: 73px; display: grid; overflow: hidden; border: 1px solid rgba(255,255,255,.22); border-radius: 7px; box-shadow: 0 8px 22px rgba(0,0,0,.24); }
+.flat-map-controls button { width: 34px; height: 34px; border: 0; border-bottom: 1px solid rgba(255,255,255,.16); background: rgba(5,14,12,.86); color: white; font-size: 20px; cursor: pointer; }
+.flat-map-controls button:last-child { border-bottom: 0; }
+.flat-map-attribution { position: absolute; z-index: 10; right: 8px; bottom: 5px; padding: 2px 5px; border-radius: 3px; background: rgba(255,255,255,.82); color: #263d36; font-size: 9px; }
+
 .character-sheet { overflow: hidden; }
 .character-sheet > button { z-index: 5; top: 17px; right: 17px; display: grid; place-items: center; width: 33px; height: 33px; border: 1px solid rgba(255,255,255,.13); border-radius: 50%; background: rgba(3,10,8,.42); color: white; opacity: 1; backdrop-filter: blur(8px); }
 .profile-view { height: 100%; overflow-y: auto; }
