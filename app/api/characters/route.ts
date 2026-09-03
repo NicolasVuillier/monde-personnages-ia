@@ -1,5 +1,5 @@
 import { errorResponse, requireWebMcpAdmin } from "@/server/authorization";
-import { insertRemoteCharacters, listRemoteCharacters, type NewRemoteCharacter } from "@/server/characters";
+import { deleteRemoteCharacters, insertRemoteCharacters, listRemoteCharacters, type NewRemoteCharacter } from "@/server/characters";
 import type { Category, ResponseLength } from "@/features/characters/types";
 
 export const runtime = "edge";
@@ -118,6 +118,23 @@ export async function POST(request: Request) {
     if (error instanceof Error && error.message.startsWith("Le personnage")) {
       return Response.json({ error: error.message }, { status: 400 });
     }
+    return errorResponse(error);
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    requireWebMcpAdmin(request);
+    const body = await request.json() as { ids?: unknown };
+    const ids = Array.isArray(body.ids)
+      ? [...new Set(body.ids.filter((id): id is string => typeof id === "string").map((id) => id.slice(0, 100)))].slice(0, 20)
+      : [];
+    if (ids.length === 0) return Response.json({ error: "Indique au moins un personnage à supprimer." }, { status: 400 });
+
+    const deleted = await deleteRemoteCharacters(ids);
+    return Response.json({ deleted });
+  } catch (error) {
+    if (error instanceof SyntaxError) return Response.json({ error: "La demande de suppression est invalide." }, { status: 400 });
     return errorResponse(error);
   }
 }
